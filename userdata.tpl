@@ -9,7 +9,6 @@ pip3 install flask boto3
 cat <<EOF > /home/ec2-user/app.py
 from flask import Flask, request, render_template_string, redirect, url_for
 import boto3
-import os
 import socket
 
 app = Flask(__name__)
@@ -47,12 +46,11 @@ def upload_file():
         for obj in response['Contents']:
             files_list.append(obj['Key'])
 
-    return render_template_string(html, files=files_list, private_ip=private_ip)
+    return render_template_string(html, files=files_list)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
 EOF
 
 chown ec2-user:ec2-user /home/ec2-user/app.py
-
 nohup python3 /home/ec2-user/app.py > /home/ec2-user/app.log 2>&1 &
