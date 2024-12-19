@@ -173,7 +173,7 @@ resource "aws_instance" "ec2_instance" {
   subnet_id                   = aws_subnet.public_subnet_1.id
 
 
-  security_groups = [aws_security_group.ec2_sg.id]
+  security_groups = [aws_security_group.web_sg.id]
 
 
   # User data for configuring the instance at launch
