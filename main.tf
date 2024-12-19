@@ -73,9 +73,9 @@ resource "aws_route" "public_internet_access" {
 }
 
 # Creation of Security Groups
-resource "aws_security_group" "lb_sg" {
-  name        = "${var.prefix}-lb-sg"
-  description = "Load balancer security group"
+resource "aws_security_group" "web_sg" {
+  name        = "${var.prefix}-web-sg"
+  description = "ec2"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -93,8 +93,8 @@ resource "aws_security_group" "lb_sg" {
   }
 }
 
-resource "aws_security_group" "web_sg" {
-  name        = "${var.prefix}-web-sg"
+resource "aws_security_group" "ec2_sg" {
+  name        = "${var.prefix}-ec2-sg"
   description = "Web server security group"
   vpc_id      = aws_vpc.main.id
 
@@ -102,7 +102,7 @@ resource "aws_security_group" "web_sg" {
     from_port       = 80
     to_port         = 80
     protocol        = "TCP"
-    security_groups = [aws_security_group.lb_sg.id]
+    security_groups = [aws_security_group.ec2_sg.id]
   }
 
   egress {
@@ -172,7 +172,9 @@ resource "aws_instance" "ec2_instance" {
   associate_public_ip_address = true
   subnet_id                   = aws_subnet.public_subnet_1.id
 
-  security_groups = [aws_security_group.web_sg.id]
+
+  security_groups = [aws_security_group.ec2_sg.id]
+
 
   # User data for configuring the instance at launch
   user_data = base64encode(templatefile("userdata.tpl", {
