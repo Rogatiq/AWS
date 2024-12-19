@@ -228,7 +228,7 @@ resource "aws_autoscaling_group" "web_asg" {
   }
 }
 
-# 4. DynamoDB creation
+# DynamoDB creation
 resource "aws_dynamodb_table" "filenames_table" {
   name           = "${var.prefix}-filenames"
   billing_mode   = "PAY_PER_REQUEST"
@@ -382,7 +382,7 @@ resource "aws_lambda_permission" "allow_s3" {
 }
 
 
-### 8. Load Balancer
+# Load Balancer
 resource "aws_lb" "alb" {
   name               = "${var.prefix}-alb"
   internal           = false
@@ -416,7 +416,7 @@ resource "aws_lb_listener" "web_listener" {
   }
 }
 
-### 9. Outputs
+# Output
 output "alb_dns_name" {
   value = aws_lb.alb.dns_name
 }
