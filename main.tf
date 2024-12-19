@@ -8,11 +8,6 @@ terraform {
   }
 }
 
-resource "random_integer" "bucket_rand" {
-  min = 10000
-  max = 99999
-}
-
 provider "aws" {
   region     = var.region
   access_key = var.aws_access_key
@@ -159,6 +154,10 @@ resource "aws_s3_bucket_versioning" "files_versioning" {
   }
 }
 
+resource "random_integer" "bucket_rand" {
+  min = 10000
+  max = 99999
+}
 
 # EC2 Launch Template
 data "aws_ami" "amazon_linux" {
@@ -242,6 +241,8 @@ resource "aws_dynamodb_table" "filenames_table" {
     Name = "${var.prefix}-filenames"
   }
 }
+
+
 
 # IAM Roles & Policies for Lambda and EC2
 data "aws_iam_policy_document" "lambda_s3_access" {
@@ -414,3 +415,4 @@ resource "aws_lb_listener" "web_listener" {
     target_group_arn = aws_lb_target_group.web_tg.arn
   }
 }
+
