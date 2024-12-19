@@ -118,10 +118,6 @@ resource "aws_security_group" "ssh_sg" {
   }
 }
 
-resource "aws_iam_instance_profile" "ec2_instance_profile" {
-  name = "${var.prefix}-instance-profile"
-  role = aws_iam_role.lambda_role.name
-}
 
 resource "aws_instance" "ec2_instance" {
   ami           = data.aws_ami.amazon_linux.id
