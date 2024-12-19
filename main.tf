@@ -93,26 +93,6 @@ resource "aws_security_group" "web_sg" {
   }
 }
 
-resource "aws_security_group" "ec2_sg" {
-  name        = "${var.prefix}-ec2-sg"
-  description = "Web server security group"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port       = 80
-    to_port         = 80
-    protocol        = "TCP"
-    security_groups = [aws_security_group.web_sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
 resource "aws_key_pair" "default" {
   key_name   = "${var.prefix}-key"
   public_key = file(var.public_key_path)
@@ -136,6 +116,11 @@ resource "aws_security_group" "ssh_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "${var.prefix}-instance-profile"
+  role = aws_iam_role.lambda_role.name
 }
 
 resource "aws_instance" "ec2_instance" {
@@ -267,10 +252,7 @@ resource "aws_iam_role_policy_attachment" "ec2_role_s3_attach" {
   policy_arn = aws_iam_policy.ec2_s3_policy.arn
 }
 
-resource "aws_iam_instance_profile" "ec2_instance_profile" {
-  name = "${var.prefix}-ec2-instance-profile"
-  role = aws_iam_role.ec2_role.name
-}
+
 
 resource "aws_iam_role" "lambda_role" {
   name = "${var.prefix}-lambda-role"
