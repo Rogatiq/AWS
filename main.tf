@@ -73,9 +73,9 @@ resource "aws_route" "public_internet_access" {
 }
 
 # Creation of Security Groups
-resource "aws_security_group" "web_sg" {
-  name        = "${var.prefix}-web-sg"
-  description = "ec2"
+resource "aws_security_group" "lb_sg" {
+  name        = "${var.prefix}-lb-sg"
+  description = "Load balancer security group"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -85,6 +85,26 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "web_sg" {
+  name        = "${var.prefix}-web-sg"
+  description = "Web server security group"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "TCP"
+    security_groups = [aws_security_group.lb_sg.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -118,41 +138,6 @@ resource "aws_security_group" "ssh_sg" {
   }
 }
 
-resource "aws_iam_instance_profile" "ec2_instance_profile" {
-  name = "${var.prefix}-instance-profile"
-  role = aws_iam_role.lambda_role.name
-}
-
-resource "aws_instance" "ec2_instance" {
-  ami           = data.aws_ami.amazon_linux.id
-  instance_type = "t2.micro"
-  key_name      = aws_key_pair.default.key_name
-
-  # Attach IAM instance profile for permissions
-  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
-
-  # Networking: Assign a public IP and configure security groups
-  associate_public_ip_address = true
-  subnet_id                   = aws_subnet.public_subnet_1.id
-
-
-  security_groups = [aws_security_group.web_sg.id]
-
-
-  # User data for configuring the instance at launch
-  user_data = base64encode(templatefile("userdata.tpl", {
-    bucket_name = aws_s3_bucket.files_bucket.bucket
-    region      = var.region
-  }))
-
-  # Tags for identification and tracking
-  tags = {
-    Name        = "${var.prefix}-ec2-instance"
-    Environment = var.region
-  }
-}
-
-
 # S3 Bucket deplyoment 
 resource "aws_s3_bucket" "files_bucket" {
   bucket = "${var.prefix}-files-bucket-${random_integer.bucket_rand.result}"
@@ -174,7 +159,74 @@ resource "random_integer" "bucket_rand" {
   max = 99999
 }
 
+# EC2 Launch Template
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
 
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+}
+
+resource "aws_iam_instance_profile" "web_instance_profile" {
+  name = "${var.prefix}-instance-profile"
+  role = aws_iam_role.lambda_role.name
+}
+
+resource "aws_launch_template" "web_lt" {
+  name_prefix   = "${var.prefix}-web-lt"
+  image_id      = data.aws_ami.amazon_linux.id
+  instance_type = "t2.micro"
+  key_name      = aws_key_pair.default.key_name
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_instance_profile.name
+  }
+
+  user_data = base64encode(templatefile("userdata.tpl", {
+    bucket_name = aws_s3_bucket.files_bucket.bucket
+    region      = var.region
+  }))
+
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups = [
+      aws_security_group.web_sg.id,
+      aws_security_group.ssh_sg.id
+    ]
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.prefix}-web"
+    }
+  }
+}
+resource "aws_autoscaling_group" "web_asg" {
+  name             = "${var.prefix}-web-asg"
+  desired_capacity = 2
+  max_size         = 3
+  min_size         = 2
+  launch_template {
+    id      = aws_launch_template.web_lt.id
+    version = "$Latest"
+  }
+
+  # Use both public subnets here
+  vpc_zone_identifier = [
+    aws_subnet.public_subnet_1.id,
+    aws_subnet.public_subnet_2.id
+  ]
+
+  target_group_arns = [aws_lb_target_group.web_tg.arn]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
 
 # DynamoDB creation
 resource "aws_dynamodb_table" "filenames_table" {
@@ -252,7 +304,10 @@ resource "aws_iam_role_policy_attachment" "ec2_role_s3_attach" {
   policy_arn = aws_iam_policy.ec2_s3_policy.arn
 }
 
-
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "${var.prefix}-ec2-instance-profile"
+  role = aws_iam_role.ec2_role.name
+}
 
 resource "aws_iam_role" "lambda_role" {
   name = "${var.prefix}-lambda-role"
@@ -278,6 +333,9 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attach" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
+
+
+
 
 # Lambda Function triggered by S3
 data "archive_file" "lambda" {
@@ -324,23 +382,41 @@ resource "aws_lambda_permission" "allow_s3" {
 }
 
 
-# Output
-output "instance_public_ip" {
-  value = aws_instance.ec2_instance.public_ip
+# Load Balancer
+resource "aws_lb" "alb" {
+  name               = "${var.prefix}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.lb_sg.id]
+  subnets = [
+    aws_subnet.public_subnet_1.id,
+    aws_subnet.public_subnet_2.id
+  ]
+
+  tags = {
+    Name = "${var.prefix}-alb"
+  }
 }
 
-data "aws_ami" "amazon_linux" {
-  most_recent = true
+resource "aws_lb_target_group" "web_tg" {
+  name     = "${var.prefix}-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = aws_vpc.main.id
+}
 
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+resource "aws_lb_listener" "web_listener" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web_tg.arn
   }
+}
 
-  filter {
-    name   = "owner-id"
-    values = ["137112412989"] # Amazon Linux owner ID
-  }
-
-  owners = ["137112412989"] # Amazon Linux AMI owner
+# Output
+output "alb_dns_name" {
+  value = aws_lb.alb.dns_name
 }
