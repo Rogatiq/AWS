@@ -19,29 +19,47 @@ private_ip = socket.gethostbyname(socket.gethostname())
 
 html = """
 <!doctype html>
-<title>Upload File</title>
-<h1>Uploading File to S3</h1>
-<form method=post enctype=multipart/form-data>
-  <input type=file name=file>
-  <input type=submit value=Upload>
-</form>
-<ul>
-{% for filename in files %}
-<li>{{ filename }}</li>
-{% endfor %}
-</ul>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload File</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="text-center">
+            <h1 class="display-4">Upload File to S3</h1>
+            <p class="lead">Your private IP: {{ private_ip }}</p>
+        </div>
+        <div class="card shadow-sm p-4 mb-4">
+            <form method="post" enctype="multipart/form-data" class="d-flex flex-column align-items-center">
+                <div class="mb-3">
+                    <input type="file" name="file" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </form>
+        </div>
+        <h2 class="mt-5">Files in S3</h2>
+        <ul class="list-group">
+            {% for filename in files %}
+            <li class="list-group-item">{{ filename }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
 """
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
-    # If POST, handle file upload and then redirect to refresh the list
     if request.method == 'POST':
         f = request.files['file']
         if f and f.filename:
             s3.upload_fileobj(f, bucket_name, f.filename)
         return redirect(url_for('upload_file'))
 
-    # If GET, list files in S3 and render the page
     files_list = []
     response = s3.list_objects_v2(Bucket=bucket_name)
     if 'Contents' in response:
