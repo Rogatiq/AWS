@@ -138,28 +138,6 @@ resource "aws_security_group" "ssh_sg" {
   }
 }
 
-# S3 Bucket deplyoment 
-resource "aws_s3_bucket" "files_bucket" {
-  bucket = "${var.prefix}-files-bucket-${random_integer.bucket_rand.result}"
-  
-  tags = {
-    Name = "${var.prefix}-files-bucket"
-  }
-}
-
-resource "aws_s3_bucket_versioning" "files_versioning" {
-  bucket = aws_s3_bucket.files_bucket.id
-  versioning_configuration {
-    status = "Suspended"
-  }
-}
-
-resource "random_integer" "bucket_rand" {
-  min = 10000
-  max = 99999
-}
-
-
 resource "aws_instance" "ec2_instance" {
   ami           = data.aws_ami.amazon_linux.id
   instance_type = "t2.micro"
@@ -188,6 +166,30 @@ resource "aws_instance" "ec2_instance" {
     Environment = var.region
   }
 }
+
+
+# S3 Bucket deplyoment 
+resource "aws_s3_bucket" "files_bucket" {
+  bucket = "${var.prefix}-files-bucket-${random_integer.bucket_rand.result}"
+  
+  tags = {
+    Name = "${var.prefix}-files-bucket"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "files_versioning" {
+  bucket = aws_s3_bucket.files_bucket.id
+  versioning_configuration {
+    status = "Suspended"
+  }
+}
+
+resource "random_integer" "bucket_rand" {
+  min = 10000
+  max = 99999
+}
+
+
 
 # DynamoDB creation
 resource "aws_dynamodb_table" "filenames_table" {
