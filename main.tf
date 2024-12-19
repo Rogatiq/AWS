@@ -417,6 +417,6 @@ resource "aws_lb_listener" "web_listener" {
 }
 
 # Output
-output "alb_dns_name" {
-  value = aws_lb.alb.dns_name
+output "instance_public_ip" {
+  value = aws_instance.ec2_instance.public_ip
 }
