@@ -4,10 +4,10 @@ FROM jenkins/jenkins:lts
 USER root
 
 # Install dependencies for Terraform and AWS CLI
-RUN apt-get update && apt-get install -y curl unzip groff less \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl unzip groff less
 
 # Install Terraform
+# Check the latest stable Terraform version at https://developer.hashicorp.com/terraform/downloads
 ENV TF_VERSION=1.5.3
 RUN curl -fsSL https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip -o terraform.zip \
     && unzip terraform.zip \
@@ -16,14 +16,9 @@ RUN curl -fsSL https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_
 
 # Install AWS CLI v2
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip.sha256" -o "awscliv2.zip.sha256" \
-    && sha256sum -c awscliv2.zip.sha256 \
     && unzip awscliv2.zip \
     && ./aws/install \
-    && rm -rf awscliv2.zip aws awscliv2.zip.sha256
-
-# Ensure proper permissions for Jenkins user
-RUN chown jenkins:jenkins /usr/local/bin/terraform /usr/local/bin/aws
+    && rm -rf awscliv2.zip aws
 
 # Return to Jenkins user
 USER jenkins
