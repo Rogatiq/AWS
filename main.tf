@@ -172,11 +172,6 @@ data "aws_ami" "amazon_linux" {
   }
 }
 
-resource "aws_iam_instance_profile" "web_instance_profile" {
-  name = "${var.prefix}-instance-profile"
-  role = aws_iam_role.lambda_role.name
-}
-
 resource "aws_launch_template" "web_lt" {
   name_prefix   = "${var.prefix}-web-lt"
   image_id      = data.aws_ami.amazon_linux.id
