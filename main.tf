@@ -8,7 +8,7 @@ terraform {
   }
 }
 
-#this is final testing of jenkins and terraform
+#this is final testing of terraform and jenkins
 provider "aws" {
   region     = var.region
   access_key = var.aws_access_key
